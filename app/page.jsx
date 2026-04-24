@@ -4,159 +4,111 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function Home() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   const [email, setEmail] = useState("");
-
-  const [username, setUsername] = useState("");
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    start();
+    checkUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      start();
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  async function start() {
+  async function checkUser() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const currentUser = session?.user ?? null;
-
-    setUser(currentUser);
-
-    if (currentUser) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", currentUser.id)
-        .single();
-
-      setProfile(data || null);
-    }
-
+    setUser(session?.user ?? null);
     setLoading(false);
   }
 
   async function login() {
-    if (!email) return alert("Digite seu email");
+    if (!email) {
+      alert("Digite seu email");
+      return;
+    }
+
+    setSending(true);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: "https://drop-lite-delta.vercel.app",
       },
     });
 
-    if (error) alert(error.message);
-    else alert("Confira seu email.");
-  }
-
-  async function createProfile() {
-    if (!username || !name) {
-      alert("Preencha username e nome");
-      return;
-    }
-
-    const { error } = await supabase.from("profiles").insert({
-      id: user.id,
-      username,
-      name,
-      bio,
-    });
+    setSending(false);
 
     if (error) {
       alert(error.message);
-      return;
+    } else {
+      alert("Código/link enviado para seu email.");
     }
-
-    start();
   }
 
   async function logout() {
     await supabase.auth.signOut();
-    location.reload();
+    setUser(null);
   }
 
   if (loading) {
-    return <main style={styles.page}>Carregando...</main>;
-  }
-
-  if (!user) {
     return (
       <main style={styles.page}>
-        <h1 style={styles.logo}>Drops Lite</h1>
-
-        <input
-          style={styles.input}
-          placeholder="Seu email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <button style={styles.button} onClick={login}>
-          Entrar por Email
-        </button>
-      </main>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <main style={styles.page}>
-        <h1 style={styles.logo}>Criar Perfil</h1>
-
-        <input
-          style={styles.input}
-          placeholder="@username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <input
-          style={styles.input}
-          placeholder="Nome exibido"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        <input
-          style={styles.input}
-          placeholder="Bio"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-        />
-
-        <button style={styles.button} onClick={createProfile}>
-          Salvar Perfil
-        </button>
+        <p style={styles.text}>Carregando...</p>
       </main>
     );
   }
 
   return (
     <main style={styles.page}>
-      <h1 style={styles.logo}>Drops Lite</h1>
+      <h1 style={styles.title}>Drops Lite</h1>
 
-      <div style={styles.card}>
-        <strong>@{profile.username}</strong>
-        <h2>{profile.name}</h2>
-        <p>{profile.bio}</p>
-      </div>
+      {!user ? (
+        <>
+          <p style={styles.subtitle}>Conecte-se com quem está por perto</p>
 
-      <button style={styles.button} onClick={logout}>
-        Sair
-      </button>
+          <input
+            type="email"
+            placeholder="Seu email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={styles.input}
+          />
+
+          <button
+            onClick={login}
+            disabled={sending}
+            style={styles.button}
+          >
+            {sending ? "Enviando..." : "Entrar por Email"}
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={styles.card}>
+            <p style={styles.label}>Logado como:</p>
+            <strong>{user.email}</strong>
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.section}>Nearby</h2>
+            <p style={styles.text}>Pack 2 em construção...</p>
+          </div>
+
+          <button onClick={logout} style={styles.button}>
+            Sair
+          </button>
+        </>
+      )}
     </main>
   );
 }
@@ -165,41 +117,58 @@ const styles = {
   page: {
     minHeight: "100vh",
     background: "#00163a",
-    padding: "24px",
+    padding: "30px",
     color: "white",
-    fontFamily: "Arial",
+    fontFamily: "Arial, sans-serif",
   },
-
-  logo: {
-    fontSize: "40px",
+  title: {
+    fontSize: "56px",
+    fontWeight: "bold",
     color: "#3b82f6",
     marginBottom: "20px",
   },
-
+  subtitle: {
+    fontSize: "22px",
+    opacity: 0.9,
+    marginBottom: "25px",
+  },
   input: {
     width: "100%",
-    padding: "16px",
-    borderRadius: "16px",
+    padding: "20px",
+    fontSize: "28px",
+    borderRadius: "20px",
     border: "none",
-    marginBottom: "14px",
-    fontSize: "18px",
+    marginBottom: "22px",
+    boxSizing: "border-box",
   },
-
   button: {
     width: "100%",
-    padding: "16px",
-    borderRadius: "16px",
+    padding: "22px",
+    fontSize: "28px",
+    borderRadius: "22px",
     border: "none",
     background: "#3b82f6",
     color: "white",
-    fontSize: "18px",
     fontWeight: "bold",
+    marginBottom: "20px",
   },
-
   card: {
     background: "#0f275a",
-    padding: "20px",
-    borderRadius: "18px",
-    marginBottom: "18px",
+    padding: "24px",
+    borderRadius: "22px",
+    marginBottom: "20px",
+  },
+  label: {
+    opacity: 0.8,
+    marginBottom: "10px",
+    fontSize: "20px",
+  },
+  section: {
+    fontSize: "32px",
+    marginBottom: "10px",
+  },
+  text: {
+    fontSize: "22px",
+    margin: 0,
   },
 };
