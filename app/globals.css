@@ -1,65 +1,44 @@
-/* app/globals.css */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+body{
+margin:0;
+background:#031633;
+font-family:Arial;
+color:white;
 }
 
-body {
-  background: #081226;
-  color: #ffffff;
-  font-family: Arial, Helvetica, sans-serif;
+.box{
+max-width:420px;
+margin:auto;
+padding:30px;
+display:flex;
+flex-direction:column;
+gap:14px;
 }
 
-.box {
-  max-width: 520px;
-  margin: auto;
-  padding: 24px;
-  min-height: 100vh;
+input{
+padding:14px;
+border-radius:12px;
+border:none;
+font-size:16px;
 }
 
-h1 {
-  font-size: 34px;
-  margin-bottom: 10px;
-  color: #4ea3ff;
+button{
+padding:16px;
+border:none;
+border-radius:14px;
+background:#2f80ff;
+color:white;
+font-size:18px;
+font-weight:bold;
 }
 
-h2 {
-  margin: 20px 0 12px;
-  color: #9cc9ff;
+.avatar{
+width:110px;
+height:110px;
+border-radius:50%;
+object-fit:cover;
 }
 
-p {
-  color: #c9d8ef;
-  margin-bottom: 8px;
-}
-
-input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: none;
-  margin: 14px 0;
-  font-size: 16px;
-}
-
-button {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: none;
-  background: #2d7dff;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-.card {
-  background: #10203c;
-  padding: 16px;
-  border-radius: 16px;
-  margin-bottom: 12px;
-  border: 1px solid #1e3a66;
+.center{
+padding:40px;
+text-align:center;
 }
