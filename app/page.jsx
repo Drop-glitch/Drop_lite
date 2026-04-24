@@ -7,8 +7,8 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
-  // detectar sessão salva
   useEffect(() => {
     checkUser();
 
@@ -33,6 +33,9 @@ export default function Home() {
 
   async function login() {
     if (!email) return alert("Digite seu email");
+    if (sending) return;
+
+    setSending(true);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -44,8 +47,10 @@ export default function Home() {
     if (error) {
       alert(error.message);
     } else {
-      alert("Confira seu email.");
+      alert("Link enviado para seu email.");
     }
+
+    setSending(false);
   }
 
   async function logout() {
@@ -53,7 +58,9 @@ export default function Home() {
     setUser(null);
   }
 
-  if (loading) return <div style={styles.loading}>Carregando...</div>;
+  if (loading) {
+    return <div style={styles.loading}>Carregando...</div>;
+  }
 
   return (
     <main style={styles.page}>
@@ -68,8 +75,15 @@ export default function Home() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <button style={styles.button} onClick={login}>
-            Entrar por Email
+          <button
+            style={{
+              ...styles.button,
+              opacity: sending ? 0.7 : 1,
+            }}
+            onClick={login}
+            disabled={sending}
+          >
+            {sending ? "Enviando..." : "Entrar por Email"}
           </button>
         </>
       ) : (
@@ -115,6 +129,7 @@ const styles = {
     borderRadius: "20px",
     border: "none",
     marginBottom: "25px",
+    outline: "none",
   },
   button: {
     width: "100%",
