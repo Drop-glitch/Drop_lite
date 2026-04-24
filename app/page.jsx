@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function Home() {
-  const [email, setEmail] = useState("");
   const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  const [tab, setTab] = useState("drops");
 
   useEffect(() => {
-    checkUser();
+    getSession();
 
     const {
       data: { subscription },
@@ -22,7 +22,7 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function checkUser() {
+  async function getSession() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -32,10 +32,10 @@ export default function Home() {
   }
 
   async function login() {
-    if (!email) return alert("Digite seu email");
-    if (sending) return;
-
-    setSending(true);
+    if (!email) {
+      alert("Digite seu email");
+      return;
+    }
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -47,10 +47,8 @@ export default function Home() {
     if (error) {
       alert(error.message);
     } else {
-      alert("Link enviado para seu email.");
+      alert("Confira seu email.");
     }
-
-    setSending(false);
   }
 
   async function logout() {
@@ -59,47 +57,112 @@ export default function Home() {
   }
 
   if (loading) {
-    return <div style={styles.loading}>Carregando...</div>;
+    return <main style={styles.page}>Carregando...</main>;
+  }
+
+  if (!user) {
+    return (
+      <main style={styles.page}>
+        <h1 style={styles.logo}>Drops Lite</h1>
+        <p style={styles.sub}>Conecte-se com quem está por perto</p>
+
+        <input
+          style={styles.input}
+          placeholder="Seu email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <button style={styles.button} onClick={login}>
+          Entrar por Email
+        </button>
+      </main>
+    );
   }
 
   return (
     <main style={styles.page}>
-      <h1 style={styles.title}>Drops Lite</h1>
+      <header style={styles.top}>
+        <div>
+          <h1 style={styles.logoSmall}>Drops Lite</h1>
+          <p style={styles.userMail}>{user.email}</p>
+        </div>
 
-      {!user ? (
+        <button style={styles.logoutMini} onClick={logout}>
+          Sair
+        </button>
+      </header>
+
+      {tab === "drops" ? (
         <>
-          <input
-            style={styles.input}
-            placeholder="Seu email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <section style={styles.profile}>
+            <div style={styles.avatar}>JQ</div>
 
-          <button
-            style={{
-              ...styles.button,
-              opacity: sending ? 0.7 : 1,
-            }}
-            onClick={login}
-            disabled={sending}
-          >
-            {sending ? "Enviando..." : "Entrar por Email"}
-          </button>
+            <div>
+              <h2 style={styles.username}>@username</h2>
+              <p style={styles.bio}>Seu perfil público</p>
+
+              <div style={styles.metrics}>
+                <span>👁️ 0</span>
+                <span>👥 0</span>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.grid}>
+            <div style={styles.plus}>＋</div>
+            <div style={styles.drop}>Drop</div>
+            <div style={styles.drop}>Drop</div>
+            <div style={styles.drop}>Drop</div>
+            <div style={styles.drop}>Drop</div>
+            <div style={styles.drop}>Drop</div>
+          </section>
         </>
       ) : (
         <>
+          <h2 style={styles.title}>Nearby</h2>
+
           <div style={styles.card}>
-            <p style={styles.label}>Logado como:</p>
-            <strong>{user.email}</strong>
+            <div>
+              <strong>@lucas</strong>
+              <p>120m • 🟢 Online</p>
+            </div>
+            <button style={styles.nex}>NEX</button>
           </div>
 
-          <h2 style={styles.subtitle}>Nearby</h2>
+          <div style={styles.card}>
+            <div>
+              <strong>@ana</strong>
+              <p>340m • ⚪ Offline</p>
+            </div>
+            <button style={styles.nex}>NEX</button>
+          </div>
 
-          <button style={styles.button} onClick={logout}>
-            Sair
-          </button>
+          <div style={styles.card}>
+            <div>
+              <strong>@rafa</strong>
+              <p>1.2km • 🟢 Online</p>
+            </div>
+            <button style={styles.nex}>NEX</button>
+          </div>
         </>
       )}
+
+      <nav style={styles.nav}>
+        <button
+          style={tab === "drops" ? styles.activeTab : styles.tab}
+          onClick={() => setTab("drops")}
+        >
+          My Drops
+        </button>
+
+        <button
+          style={tab === "nearby" ? styles.activeTab : styles.tab}
+          onClick={() => setTab("nearby")}
+        >
+          Nearby
+        </button>
+      </nav>
     </main>
   );
 }
@@ -108,56 +171,184 @@ const styles = {
   page: {
     minHeight: "100vh",
     background: "#00163a",
-    padding: "40px",
     color: "white",
+    padding: "22px",
     fontFamily: "Arial",
+    paddingBottom: "90px",
   },
-  title: {
-    fontSize: "54px",
-    fontWeight: "bold",
+
+  logo: {
+    fontSize: "52px",
     color: "#3b82f6",
-    marginBottom: "30px",
-  },
-  subtitle: {
-    fontSize: "32px",
     marginTop: "30px",
+    marginBottom: "10px",
   },
+
+  logoSmall: {
+    fontSize: "28px",
+    color: "#3b82f6",
+    margin: 0,
+  },
+
+  sub: {
+    opacity: 0.8,
+    fontSize: "22px",
+    marginBottom: "24px",
+  },
+
   input: {
     width: "100%",
-    padding: "20px",
-    fontSize: "30px",
-    borderRadius: "20px",
+    padding: "18px",
+    fontSize: "24px",
+    borderRadius: "18px",
     border: "none",
-    marginBottom: "25px",
-    outline: "none",
+    marginBottom: "18px",
   },
+
   button: {
     width: "100%",
-    padding: "22px",
-    fontSize: "28px",
-    borderRadius: "22px",
+    padding: "18px",
+    fontSize: "26px",
+    fontWeight: "bold",
+    borderRadius: "18px",
     border: "none",
     background: "#3b82f6",
     color: "white",
+  },
+
+  top: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
+
+  userMail: {
+    margin: 0,
+    opacity: 0.7,
+    fontSize: "13px",
+  },
+
+  logoutMini: {
+    background: "#102a5f",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    padding: "10px 14px",
+  },
+
+  profile: {
+    display: "flex",
+    gap: "14px",
+    background: "#0f275a",
+    padding: "16px",
+    borderRadius: "18px",
+    marginBottom: "20px",
+  },
+
+  avatar: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "50%",
+    background: "#3b82f6",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "bold",
+    fontSize: "22px",
+  },
+
+  username: {
+    margin: 0,
+  },
+
+  bio: {
+    margin: "6px 0",
+    opacity: 0.8,
+  },
+
+  metrics: {
+    display: "flex",
+    gap: "16px",
+    fontSize: "14px",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3,1fr)",
+    gap: "10px",
+  },
+
+  plus: {
+    background: "#3b82f6",
+    borderRadius: "18px",
+    minHeight: "110px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "50px",
     fontWeight: "bold",
   },
+
+  drop: {
+    background: "#0f275a",
+    borderRadius: "18px",
+    minHeight: "110px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  title: {
+    fontSize: "34px",
+    marginBottom: "18px",
+  },
+
   card: {
     background: "#0f275a",
-    padding: "25px",
-    borderRadius: "22px",
-    fontSize: "28px",
-  },
-  label: {
-    opacity: 0.8,
-    marginBottom: "10px",
-  },
-  loading: {
-    minHeight: "100vh",
-    background: "#00163a",
-    color: "white",
+    padding: "16px",
+    borderRadius: "18px",
+    marginBottom: "12px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    fontSize: "28px",
+  },
+
+  nex: {
+    background: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    padding: "10px 16px",
+    fontWeight: "bold",
+  },
+
+  nav: {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: "#071833",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    padding: "12px",
+    gap: "10px",
+  },
+
+  tab: {
+    background: "#102a5f",
+    color: "white",
+    border: "none",
+    padding: "14px",
+    borderRadius: "14px",
+  },
+
+  activeTab: {
+    background: "#3b82f6",
+    color: "white",
+    border: "none",
+    padding: "14px",
+    borderRadius: "14px",
+    fontWeight: "bold",
   },
 };
