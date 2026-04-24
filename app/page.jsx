@@ -1,159 +1,148 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "../lib/supabase"
+import { useEffect, useState } from "react";
+import { supabase } from "./supabase";
 
 export default function Home() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState(null)
+  const [email, setEmail] = useState("");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [email, setEmail] = useState("")
-  const [username, setUsername] = useState("")
-  const [name, setName] = useState("")
-  const [bio, setBio] = useState("")
-  const [avatar, setAvatar] = useState(null)
-
+  // detectar sessão salva
   useEffect(() => {
-    checkUser()
+    checkUser();
 
-    supabase.auth.onAuthStateChange(() => {
-      checkUser()
-    })
-  }, [])
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function checkUser() {
-    const { data } = await supabase.auth.getUser()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (data.user) {
-      setUser(data.user)
-      loadProfile(data.user.id)
-    }
-
-    setLoading(false)
-  }
-
-  async function loadProfile(uid) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", uid)
-      .single()
-
-    if (data) setProfile(data)
+    setUser(session?.user ?? null);
+    setLoading(false);
   }
 
   async function login() {
-    await supabase.auth.signInWithOtp({
+    if (!email) return alert("Digite seu email");
+
+    const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin
-      }
-    })
-
-    alert("Confira seu email.")
-  }
-
-  async function saveProfile() {
-    if (!avatar) {
-      alert("Escolha foto")
-      return
-    }
-
-    const fileName = Date.now() + avatar.name
-
-    await supabase.storage
-      .from("avatars")
-      .upload(fileName, avatar)
-
-    const { data } = supabase
-      .storage
-      .from("avatars")
-      .getPublicUrl(fileName)
-
-    const avatar_url = data.publicUrl
-
-    const { error } = await supabase.from("profiles").insert({
-      id: user.id,
-      username,
-      name,
-      bio,
-      avatar_url
-    })
+        emailRedirectTo: window.location.origin,
+      },
+    });
 
     if (error) {
-      alert(error.message)
-      return
+      alert(error.message);
+    } else {
+      alert("Confira seu email.");
     }
-
-    loadProfile(user.id)
   }
 
   async function logout() {
-    await supabase.auth.signOut()
-    location.reload()
+    await supabase.auth.signOut();
+    setUser(null);
   }
 
-  if (loading) return <div className="center">Carregando...</div>
-
-  if (!user) {
-    return (
-      <div className="box">
-        <h1>Drops Lite</h1>
-
-        <input
-          placeholder="Seu email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <button onClick={login}>Entrar por Email</button>
-      </div>
-    )
-  }
-
-  if (!profile) {
-    return (
-      <div className="box">
-        <h1>Criar Perfil</h1>
-
-        <input
-          placeholder="@username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <input
-          placeholder="Nome exibido"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        <input
-          placeholder="Bio"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-        />
-
-        <input
-          type="file"
-          onChange={(e) => setAvatar(e.target.files[0])}
-        />
-
-        <button onClick={saveProfile}>Salvar Perfil</button>
-      </div>
-    )
-  }
+  if (loading) return <div style={styles.loading}>Carregando...</div>;
 
   return (
-    <div className="box">
-      <img src={profile.avatar_url} className="avatar" />
+    <main style={styles.page}>
+      <h1 style={styles.title}>Drops Lite</h1>
 
-      <h2>@{profile.username}</h2>
-      <h3>{profile.name}</h3>
-      <p>{profile.bio}</p>
+      {!user ? (
+        <>
+          <input
+            style={styles.input}
+            placeholder="Seu email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-      <button onClick={logout}>Sair</button>
-    </div>
-  )
+          <button style={styles.button} onClick={login}>
+            Entrar por Email
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={styles.card}>
+            <p style={styles.label}>Logado como:</p>
+            <strong>{user.email}</strong>
+          </div>
+
+          <h2 style={styles.subtitle}>Nearby</h2>
+
+          <button style={styles.button} onClick={logout}>
+            Sair
+          </button>
+        </>
+      )}
+    </main>
+  );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#00163a",
+    padding: "40px",
+    color: "white",
+    fontFamily: "Arial",
+  },
+  title: {
+    fontSize: "54px",
+    fontWeight: "bold",
+    color: "#3b82f6",
+    marginBottom: "30px",
+  },
+  subtitle: {
+    fontSize: "32px",
+    marginTop: "30px",
+  },
+  input: {
+    width: "100%",
+    padding: "20px",
+    fontSize: "30px",
+    borderRadius: "20px",
+    border: "none",
+    marginBottom: "25px",
+  },
+  button: {
+    width: "100%",
+    padding: "22px",
+    fontSize: "28px",
+    borderRadius: "22px",
+    border: "none",
+    background: "#3b82f6",
+    color: "white",
+    fontWeight: "bold",
+  },
+  card: {
+    background: "#0f275a",
+    padding: "25px",
+    borderRadius: "22px",
+    fontSize: "28px",
+  },
+  label: {
+    opacity: 0.8,
+    marginBottom: "10px",
+  },
+  loading: {
+    minHeight: "100vh",
+    background: "#00163a",
+    color: "white",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: "28px",
+  },
+};
