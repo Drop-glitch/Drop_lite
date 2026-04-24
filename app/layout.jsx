@@ -1,6 +1,10 @@
+// app/layout.jsx
+
+import "./globals.css"
+
 export const metadata = {
   title: "Drops Lite",
-  description: "Conecte-se com quem está por perto"
+  description: "Drops Lite REAL"
 }
 
 export default function RootLayout({ children }) {
