@@ -1,6 +1,6 @@
 export const metadata = {
   title: "Drops Lite",
-  description: "Rede social local",
+  description: "Conecte-se com quem está por perto"
 }
 
 export default function RootLayout({ children }) {
