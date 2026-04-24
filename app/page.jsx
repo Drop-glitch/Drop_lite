@@ -5,37 +5,51 @@ import { supabase } from "../lib/supabase";
 
 export default function Home() {
   const [user, setUser] = useState(null);
-  const [email, setEmail] = useState("");
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("drops");
+
+  const [email, setEmail] = useState("");
+
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
 
   useEffect(() => {
-    getSession();
+    start();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    } = supabase.auth.onAuthStateChange(() => {
+      start();
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  async function getSession() {
+  async function start() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    setUser(session?.user ?? null);
+    const currentUser = session?.user ?? null;
+
+    setUser(currentUser);
+
+    if (currentUser) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+
+      setProfile(data || null);
+    }
+
     setLoading(false);
   }
 
   async function login() {
-    if (!email) {
-      alert("Digite seu email");
-      return;
-    }
+    if (!email) return alert("Digite seu email");
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -44,16 +58,34 @@ export default function Home() {
       },
     });
 
+    if (error) alert(error.message);
+    else alert("Confira seu email.");
+  }
+
+  async function createProfile() {
+    if (!username || !name) {
+      alert("Preencha username e nome");
+      return;
+    }
+
+    const { error } = await supabase.from("profiles").insert({
+      id: user.id,
+      username,
+      name,
+      bio,
+    });
+
     if (error) {
       alert(error.message);
-    } else {
-      alert("Confira seu email.");
+      return;
     }
+
+    start();
   }
 
   async function logout() {
     await supabase.auth.signOut();
-    setUser(null);
+    location.reload();
   }
 
   if (loading) {
@@ -64,7 +96,6 @@ export default function Home() {
     return (
       <main style={styles.page}>
         <h1 style={styles.logo}>Drops Lite</h1>
-        <p style={styles.sub}>Conecte-se com quem está por perto</p>
 
         <input
           style={styles.input}
@@ -80,89 +111,52 @@ export default function Home() {
     );
   }
 
+  if (!profile) {
+    return (
+      <main style={styles.page}>
+        <h1 style={styles.logo}>Criar Perfil</h1>
+
+        <input
+          style={styles.input}
+          placeholder="@username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <input
+          style={styles.input}
+          placeholder="Nome exibido"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          style={styles.input}
+          placeholder="Bio"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+        />
+
+        <button style={styles.button} onClick={createProfile}>
+          Salvar Perfil
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main style={styles.page}>
-      <header style={styles.top}>
-        <div>
-          <h1 style={styles.logoSmall}>Drops Lite</h1>
-          <p style={styles.userMail}>{user.email}</p>
-        </div>
+      <h1 style={styles.logo}>Drops Lite</h1>
 
-        <button style={styles.logoutMini} onClick={logout}>
-          Sair
-        </button>
-      </header>
+      <div style={styles.card}>
+        <strong>@{profile.username}</strong>
+        <h2>{profile.name}</h2>
+        <p>{profile.bio}</p>
+      </div>
 
-      {tab === "drops" ? (
-        <>
-          <section style={styles.profile}>
-            <div style={styles.avatar}>JQ</div>
-
-            <div>
-              <h2 style={styles.username}>@username</h2>
-              <p style={styles.bio}>Seu perfil público</p>
-
-              <div style={styles.metrics}>
-                <span>👁️ 0</span>
-                <span>👥 0</span>
-              </div>
-            </div>
-          </section>
-
-          <section style={styles.grid}>
-            <div style={styles.plus}>＋</div>
-            <div style={styles.drop}>Drop</div>
-            <div style={styles.drop}>Drop</div>
-            <div style={styles.drop}>Drop</div>
-            <div style={styles.drop}>Drop</div>
-            <div style={styles.drop}>Drop</div>
-          </section>
-        </>
-      ) : (
-        <>
-          <h2 style={styles.title}>Nearby</h2>
-
-          <div style={styles.card}>
-            <div>
-              <strong>@lucas</strong>
-              <p>120m • 🟢 Online</p>
-            </div>
-            <button style={styles.nex}>NEX</button>
-          </div>
-
-          <div style={styles.card}>
-            <div>
-              <strong>@ana</strong>
-              <p>340m • ⚪ Offline</p>
-            </div>
-            <button style={styles.nex}>NEX</button>
-          </div>
-
-          <div style={styles.card}>
-            <div>
-              <strong>@rafa</strong>
-              <p>1.2km • 🟢 Online</p>
-            </div>
-            <button style={styles.nex}>NEX</button>
-          </div>
-        </>
-      )}
-
-      <nav style={styles.nav}>
-        <button
-          style={tab === "drops" ? styles.activeTab : styles.tab}
-          onClick={() => setTab("drops")}
-        >
-          My Drops
-        </button>
-
-        <button
-          style={tab === "nearby" ? styles.activeTab : styles.tab}
-          onClick={() => setTab("nearby")}
-        >
-          Nearby
-        </button>
-      </nav>
+      <button style={styles.button} onClick={logout}>
+        Sair
+      </button>
     </main>
   );
 }
@@ -171,184 +165,41 @@ const styles = {
   page: {
     minHeight: "100vh",
     background: "#00163a",
+    padding: "24px",
     color: "white",
-    padding: "22px",
     fontFamily: "Arial",
-    paddingBottom: "90px",
   },
 
   logo: {
-    fontSize: "52px",
+    fontSize: "40px",
     color: "#3b82f6",
-    marginTop: "30px",
-    marginBottom: "10px",
-  },
-
-  logoSmall: {
-    fontSize: "28px",
-    color: "#3b82f6",
-    margin: 0,
-  },
-
-  sub: {
-    opacity: 0.8,
-    fontSize: "22px",
-    marginBottom: "24px",
+    marginBottom: "20px",
   },
 
   input: {
     width: "100%",
-    padding: "18px",
-    fontSize: "24px",
-    borderRadius: "18px",
+    padding: "16px",
+    borderRadius: "16px",
     border: "none",
-    marginBottom: "18px",
+    marginBottom: "14px",
+    fontSize: "18px",
   },
 
   button: {
     width: "100%",
-    padding: "18px",
-    fontSize: "26px",
-    fontWeight: "bold",
-    borderRadius: "18px",
-    border: "none",
-    background: "#3b82f6",
-    color: "white",
-  },
-
-  top: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px",
-  },
-
-  userMail: {
-    margin: 0,
-    opacity: 0.7,
-    fontSize: "13px",
-  },
-
-  logoutMini: {
-    background: "#102a5f",
-    color: "white",
-    border: "none",
-    borderRadius: "12px",
-    padding: "10px 14px",
-  },
-
-  profile: {
-    display: "flex",
-    gap: "14px",
-    background: "#0f275a",
     padding: "16px",
-    borderRadius: "18px",
-    marginBottom: "20px",
-  },
-
-  avatar: {
-    width: "70px",
-    height: "70px",
-    borderRadius: "50%",
+    borderRadius: "16px",
+    border: "none",
     background: "#3b82f6",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    color: "white",
+    fontSize: "18px",
     fontWeight: "bold",
-    fontSize: "22px",
-  },
-
-  username: {
-    margin: 0,
-  },
-
-  bio: {
-    margin: "6px 0",
-    opacity: 0.8,
-  },
-
-  metrics: {
-    display: "flex",
-    gap: "16px",
-    fontSize: "14px",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3,1fr)",
-    gap: "10px",
-  },
-
-  plus: {
-    background: "#3b82f6",
-    borderRadius: "18px",
-    minHeight: "110px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "50px",
-    fontWeight: "bold",
-  },
-
-  drop: {
-    background: "#0f275a",
-    borderRadius: "18px",
-    minHeight: "110px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  title: {
-    fontSize: "34px",
-    marginBottom: "18px",
   },
 
   card: {
     background: "#0f275a",
-    padding: "16px",
+    padding: "20px",
     borderRadius: "18px",
-    marginBottom: "12px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  nex: {
-    background: "#3b82f6",
-    color: "white",
-    border: "none",
-    borderRadius: "12px",
-    padding: "10px 16px",
-    fontWeight: "bold",
-  },
-
-  nav: {
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    background: "#071833",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    padding: "12px",
-    gap: "10px",
-  },
-
-  tab: {
-    background: "#102a5f",
-    color: "white",
-    border: "none",
-    padding: "14px",
-    borderRadius: "14px",
-  },
-
-  activeTab: {
-    background: "#3b82f6",
-    color: "white",
-    border: "none",
-    padding: "14px",
-    borderRadius: "14px",
-    fontWeight: "bold",
+    marginBottom: "18px",
   },
 };
