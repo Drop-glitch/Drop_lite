@@ -1,74 +1,105 @@
-// app/page.jsx
-
 "use client"
 
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 
-export default function Page() {
+export default function Home() {
   const [user, setUser] = useState(null)
-  const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(true)
-  const [profiles, setProfiles] = useState([])
+  const [profile, setProfile] = useState(null)
+
+  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
+  const [name, setName] = useState("")
+  const [bio, setBio] = useState("")
+  const [avatar, setAvatar] = useState(null)
 
   useEffect(() => {
     checkUser()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    supabase.auth.onAuthStateChange(() => {
       checkUser()
     })
-
-    return () => subscription.unsubscribe()
   }, [])
 
   async function checkUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data } = await supabase.auth.getUser()
 
-    setUser(user)
-
-    if (user) loadNearby()
+    if (data.user) {
+      setUser(data.user)
+      loadProfile(data.user.id)
+    }
 
     setLoading(false)
   }
 
-  async function sendLogin() {
-    if (!email) return
-
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    })
-
-    alert("Código/link enviado para seu email.")
-  }
-
-  async function loadNearby() {
+  async function loadProfile(uid) {
     const { data } = await supabase
       .from("profiles")
       .select("*")
-      .order("last_active", { ascending: false })
+      .eq("id", uid)
+      .single()
 
-    setProfiles(data || [])
+    if (data) setProfile(data)
+  }
+
+  async function login() {
+    await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    })
+
+    alert("Confira seu email.")
+  }
+
+  async function saveProfile() {
+    if (!avatar) {
+      alert("Escolha foto")
+      return
+    }
+
+    const fileName = Date.now() + avatar.name
+
+    await supabase.storage
+      .from("avatars")
+      .upload(fileName, avatar)
+
+    const { data } = supabase
+      .storage
+      .from("avatars")
+      .getPublicUrl(fileName)
+
+    const avatar_url = data.publicUrl
+
+    const { error } = await supabase.from("profiles").insert({
+      id: user.id,
+      username,
+      name,
+      bio,
+      avatar_url
+    })
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    loadProfile(user.id)
   }
 
   async function logout() {
     await supabase.auth.signOut()
-    setUser(null)
+    location.reload()
   }
 
-  if (loading) return <main className="box">Carregando...</main>
+  if (loading) return <div className="center">Carregando...</div>
 
-  if (!user)
+  if (!user) {
     return (
-      <main className="box">
+      <div className="box">
         <h1>Drops Lite</h1>
-        <p>Conecte-se com quem está por perto</p>
 
         <input
           placeholder="Seu email"
@@ -76,29 +107,53 @@ export default function Page() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <button onClick={sendLogin}>Entrar por Email</button>
-      </main>
+        <button onClick={login}>Entrar por Email</button>
+      </div>
     )
+  }
+
+  if (!profile) {
+    return (
+      <div className="box">
+        <h1>Criar Perfil</h1>
+
+        <input
+          placeholder="@username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <input
+          placeholder="Nome exibido"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          placeholder="Bio"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+        />
+
+        <input
+          type="file"
+          onChange={(e) => setAvatar(e.target.files[0])}
+        />
+
+        <button onClick={saveProfile}>Salvar Perfil</button>
+      </div>
+    )
+  }
 
   return (
-    <main className="box">
-      <h1>Drops Lite</h1>
+    <div className="box">
+      <img src={profile.avatar_url} className="avatar" />
 
-      <div className="card">
-        <p>Logado como:</p>
-        <strong>{user.email}</strong>
-      </div>
-
-      <h2>Nearby</h2>
-
-      {profiles.map((item) => (
-        <div className="card" key={item.id}>
-          <strong>@{item.username}</strong>
-          <p>{item.bio}</p>
-        </div>
-      ))}
+      <h2>@{profile.username}</h2>
+      <h3>{profile.name}</h3>
+      <p>{profile.bio}</p>
 
       <button onClick={logout}>Sair</button>
-    </main>
+    </div>
   )
 }
